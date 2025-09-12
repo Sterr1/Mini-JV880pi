@@ -311,7 +311,7 @@ void CMiniJV880::Run(unsigned nCore) {
     } 
     else if (nCore == 2) { // 2nd core - MCU + audio output
         const int MCU_INSTR_BURST = 64;
-        unsigned log_counter = 0;
+        //unsigned log_counter = 0;
         while (true) {
             unsigned nFrames = m_nQueueSizeFrames - m_pSoundDevice->GetQueueFramesAvail();
             if (nFrames < m_nQueueSizeFrames / 2) {
@@ -380,11 +380,11 @@ void CMiniJV880::Run(unsigned nCore) {
         constexpr uint64_t MCU_CLOCK_HZ = 12000000ull; // if your MCU clock differs, set accordingly
         constexpr uint32_t AUDIO_RATE = 32000u;
         constexpr uint64_t CYCLES_PER_SAMPLE = MCU_CLOCK_HZ / AUDIO_RATE; // 375 typical for H8@12MHz
-        constexpr uint64_t CYCLES_PER_SAMPLE_FP = CYCLES_PER_SAMPLE << 32; // fixed-point
+        //constexpr uint64_t CYCLES_PER_SAMPLE_FP = CYCLES_PER_SAMPLE << 32; // fixed-point
         const uint32_t MAX_SAMPLES_PER_ITER = 128; // bound to avoid huge bursts
 
         uint64_t last_generated_cycles = __atomic_load_n(&mcu.mcu.cycles, __ATOMIC_RELAXED);
-        uint64_t cycles_acc_fp = 0; // optional accumulator if needed by PCM internals
+        //uint64_t cycles_acc_fp = 0; // optional accumulator if needed by PCM internals
 
         while (true) {
             uint64_t cycles_target = __atomic_load_n(&mcu.mcu.cycles, __ATOMIC_ACQUIRE);

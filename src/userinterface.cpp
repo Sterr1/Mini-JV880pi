@@ -298,7 +298,76 @@ LCDWrite(Msg);*/
 
 
 // SCROLL ROUTINE
-int displayCols = m_pConfig->GetLCDColumns(); // 24
+
+int displayCols = m_pConfig->GetLCDColumns(); // 24 или 20
+CString Msg("\x1B[H\x1B[?25l"); // clear screen + hide cursor
+
+unsigned long currentTime = CTimer::GetClockTicks();
+
+// Compute actual length of each row
+int rowLen[2];
+for (int r = 0; r < 2; r++) {
+    rowLen[r] = 0;
+    for (int c = ACTUAL_COLS - 1; c >= 0; c--) {
+        if (m_pMiniJV880->mcu.lcd.LCD_Data[r * 40 + c] != ' ') {
+            rowLen[r] = c + 1;
+            break;
+        }
+    }
+}
+
+// Scroll logic
+for (int r = 0; r < 2; r++) {
+    if (rowLen[r] > displayCols) {
+        if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) {
+            m_scrollPosition[r] += m_scrollDir[r];
+            if (m_scrollPosition[r] <= 0) {
+                m_scrollPosition[r] = 0;
+                m_scrollDir[r] = +1;
+            } else if (m_scrollPosition[r] >= rowLen[r] - displayCols) {
+                m_scrollPosition[r] = rowLen[r] - displayCols;
+                m_scrollDir[r] = -1;
+            }
+        }
+    } else {
+        m_scrollPosition[r] = 0; // no scroll if text fits
+    }
+}
+if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) m_lastScrollTime = currentTime;
+
+// Render display
+for (int row = 0; row < 2; row++) {
+    int startPos = m_scrollPosition[row];
+    int cursorRow = m_pMiniJV880->mcu.lcd.LCD_DD_RAM / 0x40;
+    int cursorCol = m_pMiniJV880->mcu.lcd.LCD_DD_RAM % 0x40;
+    bool cursorEnabled = m_pMiniJV880->mcu.lcd.LCD_C != 0;
+
+    for (int col = 0; col < displayCols; col++) {
+        int sourcePos = col + startPos;
+        uint8_t ch = (sourcePos < ACTUAL_COLS) ? m_pMiniJV880->mcu.lcd.LCD_Data[row * 40 + sourcePos] : ' ';
+
+        // replace characters
+        if (ch == 0x09) ch = 0x7C; // vertical bar
+        else if (ch < 32 || ch > 126) ch = ' ';
+
+        // Проверяем позицию курсора корректно
+        if (cursorEnabled && row == cursorRow && (sourcePos) == cursorCol) {
+            Msg.Append("_"); // Показываем курсор как подчеркивание
+        } else {
+            char buf[2] = { (char)ch, 0 };
+            Msg.Append(buf);
+        }
+    }
+    
+    // Добавляем перевод строки между строками, кроме последней
+    if (row < 1) {
+        Msg.Append("\n");
+    }
+}
+
+LCDWrite(Msg);
+
+/*int displayCols = m_pConfig->GetLCDColumns(); // 24
 CString Msg("\x1B[H\E[?25l"); // clear screen + hide cursor
 
 unsigned long currentTime = CTimer::GetClockTicks();
@@ -360,7 +429,7 @@ for (int row = 0; row < 2; row++) {
 }
 
 LCDWrite(Msg);
-
+*/
 
 
 /*
@@ -439,22 +508,55 @@ LCDWrite(Msg);
 
 bool CUserInterface::LCDInit()
 {
-if (m_pConfig->GetLCDEnabled ())
+	if (m_pConfig->GetLCDEnabled ())
 	{
 		unsigned i2caddr = m_pConfig->GetLCDI2CAddress ();
 		unsigned ssd1306addr = m_pConfig->GetSSD1306LCDI2CAddress ();
 		bool st7789 = m_pConfig->GetST7789Enabled ();
+		unsigned lcdColumns = m_pConfig->GetLCDColumns(); // Get number of columns
+		
 		if (ssd1306addr != 0) {
-			m_pSSD1306 = new CSSD1306Device (m_pConfig->GetSSD1306LCDWidth (), m_pConfig->GetSSD1306LCDHeight (),
-											 m_pI2CMaster, ssd1306addr,
-											 m_pConfig->GetSSD1306LCDRotate (), m_pConfig->GetSSD1306LCDMirror ());
-			if (!m_pSSD1306->Initialize ())
-			{
-				LOGDBG("LCD: SSD1306 initialization failed");
-				return false;
+			if (lcdColumns == 24) {
+				// Use 24-driver (5x8 font) for 24 columns
+				CSSD1306Device24* pSSD1306Device24 = new CSSD1306Device24 (
+					m_pConfig->GetSSD1306LCDWidth (), 
+					m_pConfig->GetSSD1306LCDHeight (),
+					m_pI2CMaster, 
+					ssd1306addr,
+					m_pConfig->GetSSD1306LCDRotate (), 
+					m_pConfig->GetSSD1306LCDMirror ()
+				);
+				
+				if (!pSSD1306Device24->Initialize24 ())
+				{
+					LOGDBG("LCD: SSD1306 24 initialization failed");
+					delete pSSD1306Device24;
+					return false;
+				}
+				
+				LOGDBG ("LCD: SSD1306 24 (5x8 font, 24 columns)");
+				m_pLCD = pSSD1306Device24; // Assign directly to m_pLCD
+				// m_pSSD1306 remains NULL
+			} else {
+				// Use original driver (6x8 font) for 20 columns
+				m_pSSD1306 = new CSSD1306Device (
+					m_pConfig->GetSSD1306LCDWidth (), 
+					m_pConfig->GetSSD1306LCDHeight (),
+					m_pI2CMaster, 
+					ssd1306addr,
+					m_pConfig->GetSSD1306LCDRotate (), 
+					m_pConfig->GetSSD1306LCDMirror ()
+				);
+				
+				if (!m_pSSD1306->Initialize ())
+				{
+					LOGDBG("LCD: SSD1306 initialization failed");
+					return false;
+				}
+				
+				LOGDBG ("LCD: SSD1306 (6x8 font, 20 columns)");
+				m_pLCD = m_pSSD1306;
 			}
-			LOGDBG ("LCD: SSD1306");
-			m_pLCD = m_pSSD1306;
 		}
 		else if (st7789)
 		{
@@ -535,13 +637,16 @@ if (m_pConfig->GetLCDEnabled ())
 			LOGDBG ("LCD: HD44780 I2C");
 			m_pLCD = m_pHD44780;
 		}
-		assert (m_pLCD);
+		if (!m_pLCD) {
+			LOGDBG("LCD: No display device initialized");
+			return false;
+		}
 
 		m_pLCDBuffered = new CWriteBufferDevice (m_pLCD);
 		assert (m_pLCDBuffered);
 
 		LCDWrite ("\x1B[?25l\x1B""d+");		// cursor off, autopage mode
-		LCDWrite ("Start MiniJV880\n");
+		LCDWrite ("Start MiniJV880pi\n");
 		LCDWrite ("version ");
 		LCDWrite (VERSION_SHORT);
 		m_pLCDBuffered->Update ();
