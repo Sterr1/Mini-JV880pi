@@ -101,8 +101,8 @@ private:
 	bool isPaused[2] = {true, true};  // Start paused
 	bool isAtEnd[2] = {false, false};
 	unsigned long pauseStartTime[2] = {0, 0};
-	static const unsigned long SCROLL_INTERVAL = 500000;
-	static const unsigned long PAUSE_DURATION = 1000000;
+	static const unsigned long SCROLL_INTERVAL = 1000000;
+	static const unsigned long PAUSE_DURATION = 1500000;
 	static const int ACTUAL_COLS = 24;
 
 	

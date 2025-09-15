@@ -595,7 +595,7 @@ void MCU_Operand_General(MCU *mcu, uint8_t operand)
     uint32_t type = GENERAL_DIRECT;
     uint32_t disp = 0;
     uint32_t increase = INCREASE_NONE;
-    uint32_t absolute = 0;
+    //uint32_t absolute = 0;
     uint32_t reg = 0;
     uint32_t siz = OPERAND_BYTE;
     uint32_t data = 0;

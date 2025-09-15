@@ -152,161 +152,19 @@ void CUserInterface::Process (void)
 	{
 		m_pUIButtons->Update();
 	}
-	// for (size_t y = 0; y < 32; y++) {
-  //     for (size_t x = 0; x < 128; x++) {
-  //       int destX = (int)(((float)x / 128) * 820);
-  //       int destY = (int)(((float)y / 32) * 100);
-  //       int sum = 0;
-  //       for (int py = -1; py <= 1; py++) {
-  //         for (int px = -1; px <= 1; px++) {
-  //           if ((destY + py) >= 0 && (destX + px) >= 0) {
-  //             bool pixel = m_pMiniJV880->mcu.lcd.lcd_buffer[destY + py][destX + px] == lcd_col1;
-  //             sum += pixel;
-  //           }
-  //         }
-  //       }
-
-  //       bool pixel = sum > 0;
-  //       // bool pixel = mcu.lcd.lcd_buffer[destY][destX] == lcd_col1;
-  //       set_pixel(screen_buffer, x, y, pixel);
-	//
-  //       // m_ScreenUnbuffered->SetPixel(x + 800, y + 300, pixel ? 0xFFFF : 0x0000);
-  //     }
-  //   }
-
-  // Test code
-/*int displayCols = m_pConfig->GetLCDColumns();
-CString Msg("\x1B[H\x1B[?25l");
-
-for (int i = 0; i < 2; i++)
-{
-    // Read full 40-character line from buffer
-    std::string line;
-    for (int j = 0; j < 40; j++) {
-        uint8_t ch = m_pMiniJV880->mcu.lcd.LCD_Data[i * 40 + j];
-        line.push_back(ch);
-    }
-
-    // Gently remove spaces one by one, checking length after each removal
-    while (static_cast<int>(line.size()) > displayCols) {
-        bool spaceRemoved = false;
-        
-        // 1. Try to remove one space from double spaces
-        size_t pos = line.find("  ");
-        if (pos != std::string::npos) {
-            line.erase(pos, 1); // remove only one space
-            spaceRemoved = true;
-            continue; // IMMEDIATELY check length again
-        }
-        
-        // 2. If no double spaces, try removing single spaces
-        if (!spaceRemoved) {
-            pos = line.find(' ');
-            if (pos != std::string::npos) {
-                line.erase(pos, 1); // remove one single space
-                spaceRemoved = true;
-                continue; // IMMEDIATELY check length again
-            }
-        }
-        
-        // 3. If no spaces found at all - truncate
-        if (!spaceRemoved) {
-            line.resize(displayCols);
-            break;
-        }
-    }
-
-    // Draw line
-    for (int j = 0; j < displayCols; j++)
-    {
-        char ch = (j < static_cast<int>(line.size())) ? line[static_cast<size_t>(j)] : ' ';
-        
-        // Calculate cursor position in original buffer
-        int cursor_pos = m_pMiniJV880->mcu.lcd.LCD_DD_RAM;
-        int cursor_line = cursor_pos / 40;
-        int cursor_col = cursor_pos % 40;
-
-        // Check if cursor should be displayed at this position
-        bool show_cursor = (i == cursor_line && j == cursor_col && 
-                           cursor_col < displayCols && 
-                           m_pMiniJV880->mcu.lcd.LCD_C);
-
-        if (show_cursor) {
-            Msg.Append("_"); // cursor
-        } else {
-            Msg.Append(std::string(1, ch).c_str());
-        }
-    }
-    
-    // Add newline between lines
-    if (i == 0) {
-        Msg.Append("\n");
-    }
-}
-
-LCDWrite(Msg);*/
-
-//MY ROUTINE
-  /*
-	int displayCols = m_pConfig->GetLCDColumns();
-	CString Msg ("\x1B[H\E[?25l");
-	for (int i = 0; i < 2; i++)
-	{
-		// Standard line 24
-		std::string line;
-		line.reserve(ACTUAL_COLS);
-		for (int j = 0; j < ACTUAL_COLS; j++) {
-			uint8_t ch = m_pMiniJV880->mcu.lcd.LCD_Data[i * 40 + j];
-			line.push_back(ch);
-		}
-
-		// Stretch > 20
-		while ((int)line.size() > displayCols) {
-			// 1. double spaces
-			size_t pos = line.find("  ");
-			if (pos != std::string::npos) {
-				line.erase(pos, 1); // one space
-				continue;
-			}
-			// 2. one spaces
-			pos = line.find(' ');
-			if (pos != std::string::npos) {
-				line.erase(pos, 1);
-				continue;
-			}
-			// 3. If no spaces - cut
-			line.resize(displayCols);
-		}
-
-		// Draw
-		for (int j = 0; j < displayCols; j++)
-		{
-			char ch = (j < (int)line.size()) ? line[j] : ' ';
-			int jj = m_pMiniJV880->mcu.lcd.LCD_DD_RAM % 0x40;
-			int ii = m_pMiniJV880->mcu.lcd.LCD_DD_RAM / 0x40;
-
-			if (i == ii && j == jj && ii < 2 && jj < ACTUAL_COLS && m_pMiniJV880->mcu.lcd.LCD_C) {
-				// cursor
-				Msg.Append("_");
-			} else {
-				Msg.Append(std::string(1, ch).c_str());
-			}
-		}
-	}
-
-	LCDWrite(Msg);*/
 
 
-// SCROLL ROUTINE
-
-int displayCols = m_pConfig->GetLCDColumns(); // 24 или 20
+// Universal display function - sync scrolling for all rows
+int displayCols = m_pConfig->GetLCDColumns();
+int displayRows = m_pConfig->GetLCDRows();
 CString Msg("\x1B[H\x1B[?25l"); // clear screen + hide cursor
 
 unsigned long currentTime = CTimer::GetClockTicks();
 
-// Compute actual length of each row
-int rowLen[2];
-for (int r = 0; r < 2; r++) {
+// Compute actual length of each row and find maximum
+int rowLen[8] = {0};
+int maxRowLen = 0;
+for (int r = 0; r < displayRows && r < 8; r++) {
     rowLen[r] = 0;
     for (int c = ACTUAL_COLS - 1; c >= 0; c--) {
         if (m_pMiniJV880->mcu.lcd.LCD_Data[r * 40 + c] != ' ') {
@@ -314,113 +172,55 @@ for (int r = 0; r < 2; r++) {
             break;
         }
     }
+    if (rowLen[r] > maxRowLen) {
+        maxRowLen = rowLen[r];
+    }
 }
 
-// Scroll logic
-for (int r = 0; r < 2; r++) {
-    if (rowLen[r] > displayCols) {
-        if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) {
-            m_scrollPosition[r] += m_scrollDir[r];
-            if (m_scrollPosition[r] <= 0) {
-                m_scrollPosition[r] = 0;
-                m_scrollDir[r] = +1;
-            } else if (m_scrollPosition[r] >= rowLen[r] - displayCols) {
-                m_scrollPosition[r] = rowLen[r] - displayCols;
-                m_scrollDir[r] = -1;
-            }
+// Unified scroll logic - only scroll if any row needs it
+static int unifiedScrollPos = 0;
+static int unifiedScrollDir = 1;
+
+if (maxRowLen > displayCols) {  // Only scroll if content is wider than display
+    if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) {
+        unifiedScrollPos += unifiedScrollDir;
+        if (unifiedScrollPos <= 0) {
+            unifiedScrollPos = 0;
+            unifiedScrollDir = +1;
+        } else if (unifiedScrollPos >= maxRowLen - displayCols) {
+            unifiedScrollPos = maxRowLen - displayCols;
+            unifiedScrollDir = -1;
         }
-    } else {
-        m_scrollPosition[r] = 0; // no scroll if text fits
     }
+} else {
+    unifiedScrollPos = 0;  // No scrolling needed
 }
 if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) m_lastScrollTime = currentTime;
 
-// Render display
-for (int row = 0; row < 2; row++) {
-    int startPos = m_scrollPosition[row];
-    int cursorRow = m_pMiniJV880->mcu.lcd.LCD_DD_RAM / 0x40;
-    int cursorCol = m_pMiniJV880->mcu.lcd.LCD_DD_RAM % 0x40;
-    bool cursorEnabled = m_pMiniJV880->mcu.lcd.LCD_C != 0;
+// Render display for all rows with unified scrolling
+for (int row = 0; row < displayRows && row < 8; row++) {
+    int startPos = unifiedScrollPos; // Use unified scroll position
 
-    for (int col = 0; col < displayCols; col++) {
-        int sourcePos = col + startPos;
-        uint8_t ch = (sourcePos < ACTUAL_COLS) ? m_pMiniJV880->mcu.lcd.LCD_Data[row * 40 + sourcePos] : ' ';
-
-        // replace characters
-        if (ch == 0x09) ch = 0x7C; // vertical bar
-        else if (ch < 32 || ch > 126) ch = ' ';
-
-        // Проверяем позицию курсора корректно
-        if (cursorEnabled && row == cursorRow && (sourcePos) == cursorCol) {
-            Msg.Append("_"); // Показываем курсор как подчеркивание
-        } else {
-            char buf[2] = { (char)ch, 0 };
-            Msg.Append(buf);
-        }
-    }
+	if (rowLen[row] == 0) continue;
     
-    // Добавляем перевод строки между строками, кроме последней
-    if (row < 1) {
-        Msg.Append("\n");
-    }
-}
-
-LCDWrite(Msg);
-
-/*int displayCols = m_pConfig->GetLCDColumns(); // 24
-CString Msg("\x1B[H\E[?25l"); // clear screen + hide cursor
-
-unsigned long currentTime = CTimer::GetClockTicks();
-
-// Compute actual length of each row
-int rowLen[2];
-for (int r = 0; r < 2; r++) {
-    rowLen[r] = 0;
-    for (int c = ACTUAL_COLS - 1; c >= 0; c--) {
-        if (m_pMiniJV880->mcu.lcd.LCD_Data[r * 40 + c] != ' ') {
-            rowLen[r] = c + 1;
-            break;
-        }
-    }
-}
-
-// Scroll logic
-for (int r = 0; r < 2; r++) {
-    if (rowLen[r] > displayCols) {
-        if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) {
-            m_scrollPosition[r] += m_scrollDir[r];
-            if (m_scrollPosition[r] <= 0) {
-                m_scrollPosition[r] = 0;
-                m_scrollDir[r] = +1;
-            } else if (m_scrollPosition[r] >= rowLen[r] - displayCols) {
-                m_scrollPosition[r] = rowLen[r] - displayCols;
-                m_scrollDir[r] = -1;
-            }
-        }
-    } else {
-        m_scrollPosition[r] = 0; // no scroll if text fits
-    }
-}
-if (currentTime - m_lastScrollTime >= SCROLL_INTERVAL) m_lastScrollTime = currentTime;
-
-// Render display
-for (int row = 0; row < 2; row++) {
-    int startPos = m_scrollPosition[row];
+    // Get cursor information
     int cursorRow = m_pMiniJV880->mcu.lcd.LCD_DD_RAM / 0x40;
     int cursorCol = m_pMiniJV880->mcu.lcd.LCD_DD_RAM % 0x40;
     bool cursorEnabled = m_pMiniJV880->mcu.lcd.LCD_C != 0;
+
+    if (cursorRow >= displayRows) {
+        cursorRow = 0;
+    }
 
     for (int col = 0; col < displayCols; col++) {
         int sourcePos = col + startPos;
         uint8_t ch = (sourcePos < ACTUAL_COLS) ? m_pMiniJV880->mcu.lcd.LCD_Data[row * 40 + sourcePos] : ' ';
 
-        // replace characters
-        if (ch == 0x09) ch = 0x7C; // vertical bar
+        if (ch == 0x09) ch = 0x7C;
         else if (ch < 32 || ch > 126) ch = ' ';
 
-        // cursor as space
-        if (cursorEnabled && row == cursorRow && col == cursorCol - startPos && col >= 0 && col < displayCols) {
-            Msg.Append(" ");
+        if (cursorEnabled && row == cursorRow && sourcePos == cursorCol) {
+            Msg.Append("_");
         } else {
             char buf[2] = { (char)ch, 0 };
             Msg.Append(buf);
@@ -429,80 +229,7 @@ for (int row = 0; row < 2; row++) {
 }
 
 LCDWrite(Msg);
-*/
 
-
-/*
-    int displayCols = m_pConfig->GetLCDColumns();
-    CString Msg ("\x1B[H\E[?25l");
-
-    unsigned long currentTime = CTimer::GetClockTicks();
-
-    // Need Scroll?
-    bool needScroll = false;
-    if (ACTUAL_COLS > displayCols) {
-        bool allSpaces = true;
-        for (int r = 0; r < 2; r++) {
-            for (int c = displayCols; c < ACTUAL_COLS; c++) {
-                if (m_pMiniJV880->mcu.lcd.LCD_Data[r * 40 + c] != ' ') {
-                    allSpaces = false;
-                    break;
-                }
-            }
-            if (!allSpaces) break;
-        }
-        needScroll = !allSpaces;
-    }
-
-    // Scroll logic
-    if (needScroll && (currentTime - m_lastScrollTime >= SCROLL_INTERVAL)) {
-        for (int r = 0; r < 2; r++) {
-            m_scrollPosition[r] += m_scrollDir[r];
-            if (m_scrollPosition[r] <= 0) {
-                m_scrollPosition[r] = 0;
-                m_scrollDir[r] = +1;
-            } else if (m_scrollPosition[r] >= ACTUAL_COLS - displayCols) {
-                m_scrollPosition[r] = ACTUAL_COLS - displayCols;
-                m_scrollDir[r] = -1;
-            }
-        }
-        m_lastScrollTime = currentTime;
-    }
-
-    // Strings
-    for (int i = 0; i < 2; i++) {
-        int startPos = needScroll ? m_scrollPosition[i] : 0;
-
-        // cursor
-        int cursorRow = m_pMiniJV880->mcu.lcd.LCD_DD_RAM / 0x40;
-        int cursorCol = m_pMiniJV880->mcu.lcd.LCD_DD_RAM % 0x40;
-        bool cursorEnabled = m_pMiniJV880->mcu.lcd.LCD_C != 0;
-
-        for (int j = 0; j < displayCols; j++) {
-            int sourcePos = (j + startPos) % ACTUAL_COLS;
-            uint8_t ch = m_pMiniJV880->mcu.lcd.LCD_Data[i * 40 + sourcePos];
-
-            // cursor in window?
-            bool cursorHere = false;
-            if (cursorEnabled && cursorRow == i) {
-                int rel = cursorCol - startPos;
-                if (rel < 0) rel += ACTUAL_COLS;
-                if (rel >= 0 && rel < displayCols && j == rel) {
-                    cursorHere = true;
-                }
-            }
-
-            if (cursorHere) {
-                Msg.Append("_");
-            } else {
-                char buf[2] = { (char)ch, 0 };
-                Msg.Append(buf);
-            }
-        }
-    }
-
-    LCDWrite(Msg);
-*/
 
 }
 
@@ -516,7 +243,7 @@ bool CUserInterface::LCDInit()
 		unsigned lcdColumns = m_pConfig->GetLCDColumns(); // Get number of columns
 		
 		if (ssd1306addr != 0) {
-			if (lcdColumns == 24) {
+			if (lcdColumns >= 24) {
 				// Use 24-driver (5x8 font) for 24 columns
 				CSSD1306Device24* pSSD1306Device24 = new CSSD1306Device24 (
 					m_pConfig->GetSSD1306LCDWidth (), 

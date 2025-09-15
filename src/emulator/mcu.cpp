@@ -454,7 +454,7 @@ void MCU::MCU_UpdateUART_TX() {
 
 void MCU::MCU_PatchROM() {
   // Disable intro
-  //rom2[0x318f7] = 0x19;
+  rom2[0x318f7] = 0x19;
 }
 
 void unscramble(const uint8_t *src, uint8_t *dst, const int len) {
