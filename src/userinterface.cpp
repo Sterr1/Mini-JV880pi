@@ -218,7 +218,6 @@ for (int row = 0; row < displayRows && row < 8; row++) {
 
         // replace   characters
         if (ch == 0x09) ch = 0x7C; // vertical bar
-
         else if (ch < 32 || ch > 126) ch = ' ';
 
         if (cursorEnabled && row == cursorRow && sourcePos == cursorCol) {
