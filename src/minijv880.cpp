@@ -157,7 +157,7 @@ bool CMiniJV880::Initialize(void) {
     if (!LoadMainRoms(m_pConfig->GetExpRom())) {
         return false;
     }
-    //LOGNOTE("waverom_exp addr: %p, rom.data addr: %p, size: %zu", mcu.pcm.waverom_exp, m_romInfos[m_pConfig->GetExpRom() + 6].data, EXP_SIZE);
+    LOGNOTE("waverom_exp №%d addr: %p, rom.data addr: %p, size: %zu", m_pConfig->GetExpRom(), mcu.pcm.waverom_exp, m_romInfos[m_pConfig->GetExpRom() + 6].data, EXP_SIZE);
     int ret = 0;
 
     uint8_t* nvram = (uint8_t*)m_romInfos[0].data;  // jv880_nvram.bin
@@ -596,7 +596,7 @@ void CMiniJV880::Run(unsigned nCore) {
 
 
 bool CMiniJV880::LoadMainRoms(uint8_t ExpRom) {
-    //LOGNOTE("Loading main ROMs for synthesizer and %d exp", ExpRom);
+    LOGNOTE("Loading main ROMs for synthesizer and %d exp", ExpRom);
     
     int main_rom_indices[6];
     unsigned cr;
