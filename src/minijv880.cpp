@@ -178,7 +178,8 @@ CMiniJV880::~CMiniJV880 ()
 bool CMiniJV880::Initialize(void) {
   assert(m_pConfig);
   assert(m_pSoundDevice);
-  
+
+  Tracer::Init();  
 
   n_mMCUcycles = m_pConfig->GetMCUcycles ();
   LOGNOTE("MCU cycles %d", n_mMCUcycles);
@@ -246,6 +247,7 @@ bool CMiniJV880::Initialize(void) {
   m_nQueueSizeFrames = m_pSoundDevice->GetQueueSizeFrames();
 
   m_pSoundDevice->Start();
+  TracerStart();
 
   if (!CMultiCoreSupport::Initialize ())
 	{
@@ -1033,6 +1035,14 @@ void CMiniJV880::UpdateNetwork()
 
 		if (IPString.GetLength() > 0) {
             m_UI.LCDMessage("IP address is \n%s", (const char*)IPString);
+            TracerStop();
+            int n = TracerSave("jv_trace.bin");
+            if (n >= 0) {
+                m_UI.LCDMessage("Tracer: saved %d records", n);
+            } else {
+                LOGERR("Tracer: save failed");
+            }
+
         }
 
 		m_pmDNSPublisher = new CmDNSPublisher (m_pNet);

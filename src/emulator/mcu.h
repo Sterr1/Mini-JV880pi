@@ -37,6 +37,7 @@
 #include "lcd.h"
 #include "mcu_opcodes.h"
 #include "pcm.h"
+#include "../tracer.h"
 #include <stdint.h>
 #include <vector>
 
@@ -584,6 +585,8 @@ inline void MCU_PostSample(int *sample32) {
 
     MCU_Operand_Table[operand](this, operand);
 
+    Tracer::LogInstr(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc - 1), operand);
+
     if (mcu.sr & STATUS_T) {
       MCU_Interrupt_Exception(EXCEPTION_SOURCE_TRACE);
     }
@@ -605,6 +608,7 @@ inline void MCU_PostSample(int *sample32) {
   inline void MCU_Interrupt_StartVector(const uint32_t vector,
                                         const int32_t mask) {
     uint32_t address = MCU_GetVectorAddress(vector);
+    Tracer::LogIRQ(mcu.cycles, address, (uint8_t)(mask >= 0 ? mask : 0));
     MCU_PushStack(mcu.pc);
     MCU_PushStack(mcu.cp);
     MCU_PushStack(mcu.sr);

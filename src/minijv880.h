@@ -29,6 +29,7 @@
 #include "userinterface.h"
 #include "midi.h"
 #include "emulator/mcu.h"
+#include "tracer.h"
 #include <circle/gpiomanager.h>
 #include <circle/i2cmaster.h>
 #include <circle/interrupt.h>
@@ -63,6 +64,27 @@ public:
 
   virtual void Run(unsigned nCore) override;
   
+  void TracerStart() {
+        Tracer::Start();
+    }
+ 
+    void TracerStop() {
+        Tracer::Stop();
+    }
+ 
+    bool TracerIsRunning() {
+        return Tracer::IsRunning();
+    }
+ 
+    // Сохрани лог; типичный путь на Circle/RPi: "/sdcard/jv_trace.bin"
+    // Возвращает кол-во записей или -1 при ошибке.
+    int TracerSave(const char* path = "/sdcard/jv_trace.bin") {
+        return Tracer::Save(path);
+    }
+
+    uint32_t TracerCount() {
+        return Tracer::Count();
+    }
 
   static void USBMIDIMessageHandler(unsigned nCable, u8 *pPacket,
                                     unsigned nLength);
