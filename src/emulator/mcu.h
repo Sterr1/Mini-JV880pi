@@ -583,9 +583,9 @@ inline void MCU_PostSample(int *sample32) {
   inline void MCU_ReadInstruction() {
     uint8_t operand = MCU_ReadCodeAdvance();
 
-    MCU_Operand_Table[operand](this, operand);
-
     Tracer::LogInstr(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc - 1), operand);
+    
+    MCU_Operand_Table[operand](this, operand);
 
     if (mcu.sr & STATUS_T) {
       MCU_Interrupt_Exception(EXCEPTION_SOURCE_TRACE);

@@ -218,6 +218,9 @@ bool CMiniJV880::Initialize(void) {
     uint8_t* rom2 = (uint8_t*)m_romInfos[2].data;   // jv880_rom2.bin
     uint8_t* pcm1 = (uint8_t*)m_romInfos[3].data;   // jv880_waverom1.bin
     uint8_t* pcm2 = (uint8_t*)m_romInfos[4].data;   // jv880_waverom2.bin
+
+    TracerStart();
+    
     if (m_pConfig->GetExpRom() == 0) {
         ret = mcu.startSC55(rom1, rom2, pcm1, pcm2, nvram, nullptr); 
     } else {
@@ -247,14 +250,24 @@ bool CMiniJV880::Initialize(void) {
   m_nQueueSizeFrames = m_pSoundDevice->GetQueueSizeFrames();
 
   m_pSoundDevice->Start();
-  TracerStart();
+  
 
   if (!CMultiCoreSupport::Initialize ())
 	{
 		return false;
 	}
+  
 
   InitNetwork();  // returns bool but we continue even if something goes wrong
+  CTimer::SimpleMsDelay(2000);
+  TracerStop();
+            int n = TracerSave("jv_trace_init.bin");
+            if (n >= 0) {
+                m_UI.LCDMessage("Tracer: saved %d records", n);
+            } else {
+                LOGERR("Tracer: save failed");
+            }
+  
   LOGNOTE("CMiniJV880::Initialize: InitNetwork() called");
 
   LOGNOTE("initialised");
@@ -667,7 +680,7 @@ void CMiniJV880::Run(unsigned nCore) {
 
 
 bool CMiniJV880::LoadMainRoms(uint8_t ExpRom) {
-    //LOGNOTE("Loading main ROMs for synthesizer and %d exp", ExpRom);
+    LOGNOTE("Loading main ROMs for synthesizer and %d exp", ExpRom);
     
     int main_rom_indices[6];
     unsigned cr;
@@ -1035,14 +1048,6 @@ void CMiniJV880::UpdateNetwork()
 
 		if (IPString.GetLength() > 0) {
             m_UI.LCDMessage("IP address is \n%s", (const char*)IPString);
-            TracerStop();
-            int n = TracerSave("jv_trace.bin");
-            if (n >= 0) {
-                m_UI.LCDMessage("Tracer: saved %d records", n);
-            } else {
-                LOGERR("Tracer: save failed");
-            }
-
         }
 
 		m_pmDNSPublisher = new CmDNSPublisher (m_pNet);
