@@ -204,7 +204,8 @@ bool CMiniJV880::Initialize(void) {
    InitBankMappings();
     midiParser.Init(this);
     memset(mcu.lcd.LCD_Data, 0x20, sizeof(mcu.lcd.LCD_Data));
-    mcu.mcu.pc=0; //mcu not running   
+    mcu.mcu.pc=0; //mcu not running  
+    //LOGNOTE("ExpROM selected from ini %d", m_pConfig->GetExpRom()); 
 
     if (!LoadMainRoms(m_pConfig->GetExpRom())) {
         return false;
