@@ -68,7 +68,7 @@ else
 fi
 
 IS_DIRTY=$(echo "${VERSION}" | grep -q "dirty" && echo "1" || echo "0")
-SHORT_VERSION=$(echo "${VERSION}" | sed 's/-g[0-9a-f]*$//' | sed 's/-dirty$//')
+SHORT_VERSION=$(echo "${VERSION}" | sed 's/^\([^-]*\).*$/\1/')
 
 cat > src/version.h << EOF
 #ifndef VERSION_H

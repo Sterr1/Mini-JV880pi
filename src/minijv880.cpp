@@ -21,6 +21,7 @@
 #include "minijv880.h" 
 #include "midi.h"
 #include "userinterface.h"
+#include "version.h"
 #include <assert.h>
 #include <circle/memory.h>
 #include <circle/devicenameservice.h>
@@ -111,10 +112,12 @@ CMiniJV880::CMiniJV880(CConfig *pConfig, CInterruptSystem *pInterrupt,
       __atomic_store_n(&sample_write_idx, 0u, __ATOMIC_RELAXED);
       m_nPendingBankSwitch.store(0xFF, std::memory_order_release);
 
+      LOGNOTE("Mini-JV880pi version %s", VERSION_STRING);
+
   // select the sound device
   const char *pDeviceName = pConfig->GetSoundDevice();
   if (strcmp(pDeviceName, "i2s") == 0) {
-    LOGNOTE("I2S mode");
+    LOGNOTE("Sound: I2S mode");
     m_pSoundDevice = new CI2SSoundBaseDevice(
         pInterrupt, pConfig->GetSampleRate(), pConfig->GetChunkSize(), false, pI2CMaster,
         pConfig->GetDACI2CAddress(), CI2SSoundBaseDevice::DeviceModeTXOnly,
@@ -123,7 +126,7 @@ CMiniJV880::CMiniJV880(CConfig *pConfig, CInterruptSystem *pInterrupt,
 #if RASPPI == 5
     LOGNOTE("HDMI mode NOT supported on RPI 5.");
 #else
-    LOGNOTE("HDMI mode");
+    LOGNOTE("Sound: HDMI mode");
 
     m_pSoundDevice =
         new CHDMISoundBaseDevice(pInterrupt, pConfig->GetSampleRate(), pConfig->GetChunkSize());
@@ -133,7 +136,7 @@ CMiniJV880::CMiniJV880(CConfig *pConfig, CInterruptSystem *pInterrupt,
     m_bChannelsSwapped = !m_bChannelsSwapped;
 #endif
   } else {
-    LOGNOTE("PWM mode");
+    LOGNOTE("Sound: PWM mode");
 
     m_pSoundDevice =
         new CPWMSoundBaseDevice(pInterrupt, pConfig->GetSampleRate(), pConfig->GetChunkSize());
