@@ -127,7 +127,7 @@ bool CUserInterface::Initialize (void)
 
 	if (m_pConfig->GetEncoderEnabled ())
 	{
-		m_pRotaryEncoder = new CKY040 (m_pConfig->GetEncoderPinClock (),
+		m_pRotaryEncoder = new CRobustKY040 (m_pConfig->GetEncoderPinClock (),
 					       m_pConfig->GetEncoderPinData (),
 					       m_pConfig->GetButtonPinEnter (),
 					       m_pGPIOManager);
@@ -315,20 +315,20 @@ void CUserInterface::LCDWrite (const char *pString)
 	}
 }
 
-void CUserInterface::EncoderEventHandler (CKY040::TEvent Event)
+void CUserInterface::EncoderEventHandler (CRobustKY040::TEvent Event)
 {
 	//uint32_t btn = 0;
 	switch (Event)
 	{
-	case CKY040::EventSwitchDown:
+	case CRobustKY040::EventSwitchDown:
 		m_bSwitchPressed = true;
 		break;
 
-	case CKY040::EventSwitchUp:
+	case CRobustKY040::EventSwitchUp:
 		m_bSwitchPressed = false;
 		break;
 
-	case CKY040::EventClockwise:
+	case CRobustKY040::EventClockwise:
 		if (m_bSwitchPressed) {
 			// We must reset the encoder switch button to prevent events from being
 			// triggered after the encoder is rotated
@@ -338,7 +338,7 @@ void CUserInterface::EncoderEventHandler (CKY040::TEvent Event)
     }
 		break;
 
-	case CKY040::EventCounterclockwise:
+	case CRobustKY040::EventCounterclockwise:
 		if (m_bSwitchPressed) {
 			m_pUIButtons->ResetButton(m_pConfig->GetButtonPinEnter());
 		} else {
@@ -346,7 +346,7 @@ void CUserInterface::EncoderEventHandler (CKY040::TEvent Event)
 		}
 		break;
 
-	case CKY040::EventSwitchHold:
+	case CRobustKY040::EventSwitchHold:
 		if (m_pRotaryEncoder->GetHoldSeconds () >= 120)
 		{
 			delete m_pLCD;		// reset LCD
@@ -360,7 +360,7 @@ void CUserInterface::EncoderEventHandler (CKY040::TEvent Event)
 	}
 }
 
-void CUserInterface::EncoderEventStub (CKY040::TEvent Event, void *pParam)
+void CUserInterface::EncoderEventStub (CRobustKY040::TEvent Event, void *pParam)
 {
 	CUserInterface *pThis = static_cast<CUserInterface *> (pParam);
 	assert (pThis != 0);

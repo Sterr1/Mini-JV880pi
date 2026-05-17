@@ -16,7 +16,7 @@ NET_OBJS = \
     net/ftpworker.o \
     net/mdnspublisher.o
 
-OBJS = main.o kernel.o minijv880.o config.o userinterface.o uibuttons.o midi.o \
+OBJS = main.o kernel.o minijv880.o config.o userinterface.o drivers/robustky040.o uibuttons.o midi.o \
        emulator/lcd.o emulator/mcu.o emulator/mcu_opcodes.o emulator/pcm.o drivers/ssd1306device24.o \
        $(NET_OBJS) 
 
