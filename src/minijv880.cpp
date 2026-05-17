@@ -1,5 +1,5 @@
 //
-// minidexed.cpp
+// minijv880.cpp
 //
 // Mini-JV880pi - Roland JV880 synthesizer for bare metal Raspberry Pi
 // Copyright (C) 2022  The MiniDexed Team
@@ -1136,7 +1136,7 @@ bool CMiniJV880::InitNetwork()
 		}
 		else 
 		{
-			LOGERR("CMiniJV880::InitNetwork: Network type is not set, please check your minidexed configuration file.");
+			LOGERR("CMiniJV880::InitNetwork: Network type is not set, please check your minijv880.ini configuration file.");
 			NetDeviceType = NetDeviceTypeUnknown;
 		}
 		

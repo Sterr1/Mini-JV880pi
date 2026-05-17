@@ -1,5 +1,5 @@
 //
-// minidexed.h
+// minijv880.h
 //
 // Mini-JV880pi - Roland JV880 synthesizer for bare metal Raspberry Pi
 // Copyright (C) 2022  The MiniDexed Team

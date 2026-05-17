@@ -1,3 +1,7 @@
+1.1.1 
+Oldmaga: insert better driver for encoder
+
+
 1.1.0
 Fixed buttons send to Nuked SC55
 Turned on internal resampler to 64 khz
