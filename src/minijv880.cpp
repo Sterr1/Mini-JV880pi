@@ -216,6 +216,8 @@ bool CMiniJV880::Initialize(void) {
     
     int ret = 0;
 
+    memset(mcu.cardram, 0xFF, CARDRAM_SIZE);
+
     uint8_t* nvram = (uint8_t*)m_romInfos[0].data;  // jv880_nvram.bin
     uint8_t* rom1 = (uint8_t*)m_romInfos[1].data;   // jv880_rom1.bin
     uint8_t* rom2 = (uint8_t*)m_romInfos[2].data;   // jv880_rom2.bin
@@ -540,6 +542,46 @@ void CMiniJV880::SaveNVRAMIncremental() {
         LOGERR("Failed to save NVRAM to %s, written: %d bytes, error: %d", 
                filename, bytesWritten, res);
     }
+
+    // Cardram Save 
+    
+    sprintf(filename, "nvram/jv880_crram%d.bin", m_nNVRAMSaveCounter);
+        
+    res = f_open(&file, filename, FA_READ);
+    if (res == FR_OK) {
+        LOGERR("CardRAM file exists %s, error: %d", 
+               filename, res);
+        f_close(&file);
+        return;
+    }
+    else {
+        LOGERR("OK to save CardRAM to %s, error: %d", 
+               filename, res);
+      f_close(&file);  
+    }
+    
+
+    m_UI.LCDMessage("Saving CardRAM file\njv880_crram%d.bin", m_nNVRAMSaveCounter);
+    
+    res = f_open(&file, filename, FA_WRITE | FA_CREATE_ALWAYS);
+    if (res != FR_OK) {
+        LOGERR("Cannot open file %s for writing, error: %d", filename, res);
+        return;
+    }
+    
+    res = f_write(&file, mcu.cardram, 0x8000, &bytesWritten);
+    f_close(&file);
+    
+    if (res == FR_OK && bytesWritten == 0x8000) {
+        LOGNOTE("CardRAM saved to %s", filename);
+        m_UI.LCDMessage("Saved CardRAM file\njv880_crram%d.bin", m_nNVRAMSaveCounter);
+    } else {
+        LOGERR("Failed to save CardRAM to %s, written: %d bytes, error: %d", 
+               filename, bytesWritten, res);
+    }
+
+    return;
+
 }
 
 

@@ -454,7 +454,7 @@ void CUserInterface::UIButtonsEventHandler (CUIButton::BtnEvent Event)
 		m_pMiniJV880->SaveNVRAMIncremental();
 	} 
 
-	//LOGNOTE("Button: %x", btn);
+	LOGNOTE("Button: %x", btn);
 	m_pMiniJV880->mcu.mcu_button_pressed = btn;
 	//LOGNOTE("Led state: 0x%08X", m_pMiniJV880->mcu.jv880_led_state);
 }

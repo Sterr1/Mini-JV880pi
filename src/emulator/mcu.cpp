@@ -233,29 +233,56 @@ uint8_t MCU::MCU_DeviceRead(uint32_t address) {
     return uart_rx_byte;
   case 0x00:
     return 0xff;
-  case DEV_P7DR: {
-    uint8_t data = 0xff;
-    uint32_t button_pressed = mcu_button_pressed;
+case DEV_P7DR:
+  {
+    // === 1) KBD MATRIX MODE (required for the buttons) ===
+    if (io_sd == 0xFB || io_sd == 0xF7 || io_sd == 0xEF)
+    {
+        uint8_t data = 0xFF;
+        const uint32_t button_pressed = mcu_button_pressed;
 
-    if (io_sd == 0b11111011)
-      data &= ((button_pressed >> 0) & 0b11111) ^ 0xFF;
-    if (io_sd == 0b11110111)
-      data &= ((button_pressed >> 5) & 0b11111) ^ 0xFF;
-    if (io_sd == 0b11101111)
-      data &= ((button_pressed >> 10) & 0b1111) ^ 0xFF;
+        // Row 1: bits 0–4 (5 buttons)
+        if (io_sd == 0xFB)
+            data &= (uint8_t)(((button_pressed >> 0) & 0x1F) ^ 0xFF);
 
-    data |= 0b10000000;
-  
-      return data;
+        // Row 2: bits 5–9 (5 buttons)
+        if (io_sd == 0xF7)
+            data &= (uint8_t)(((button_pressed >> 5) & 0x1F) ^ 0xFF);
+
+        // Row 3: bits 10–13 (4 buttons)
+        if (io_sd == 0xEF)
+            data &= (uint8_t)(((button_pressed >> 10) & 0x0F) ^ 0xFF);
+
+        data |= 0x80;
+        return data;
+    }
+
+    // === 2) PORT MODE (DDR/latch + pull-up) ===
+    const uint8_t dir   = dev_register[DEV_P7DDR]; // 1=output, 0=input
+    const uint8_t latch = dev_register[DEV_P7DR];
+    const uint8_t in    = 0xFF;                    // pull-up on all inputs
+
+    uint8_t eff_dir = dir;
+
+    // DataCard WP sense: when the firmware uses P7DDR=0x20 with io_sd=0xFF,
+    // it treats bit 5 as INPUT (pull-up), not as an output latch.
+    if (io_sd == 0xFF && dir == 0x20)
+        eff_dir = (uint8_t)(dir & (uint8_t)~0x20);
+
+    uint8_t ret = (uint8_t)((latch & eff_dir) | (in & (uint8_t)~eff_dir));
+
+    return ret;
   }
+
   case DEV_P9DR: {
-    int cfg = 2;
-    int dir = dev_register[DEV_P9DDR];
+      const uint8_t dir   = dev_register[DEV_P9DDR]; // 1=output, 0=input
+      const uint8_t latch = dev_register[DEV_P9DR];
+      const uint8_t in    = 0xFF; // pull-up on all inputs
 
-    int val = cfg & (dir ^ 0xff);
-    val |= dev_register[DEV_P9DR] & dir;
-    return val;
+      const uint8_t ret = (uint8_t)((latch & dir) | (in & (uint8_t)~dir));
+      return ret;
   }
+
   case DEV_SCR:
     if (dev_register[address] == 0x30)
       midi_ready = true; // FIXME
@@ -354,8 +381,30 @@ uint8_t MCU::MCU_Read(uint32_t address) {
     break;
   case 14:
   case 15:
-    ret = cardram[address & 0x7fff];
+  {
+    const uint16_t idx = (uint16_t)(address & 0x7fff);
+    uint8_t v = cardram[idx];
+
+    // Changes by oldmaga:
+    // The JV-880 firmware probes the card through the 00:3723 routine.
+    // During Card bank navigation this probe can wrap to the last byte of the
+    // 32 KB card image. That byte is real card data, not a card-status/header
+    // byte, and exposing it here can make the firmware clear its Card/C-ready
+    // state and clamp Patch Play CW navigation back to I64.
+    //
+    // Match the stable probe identity byte used by the existing "Soland" probe
+    // workaround instead of leaking arbitrary tail data from CARD[0x7FFF].
+    if (mcu.cp == 0x00 && mcu.pc == 0x3723 && idx == 0x7FFF)
+        v = 0x53;
+
+    // TRICK: during the firmware "probe" (CP:00 PC:3723), always make it look like "Soland" (0x53)
+    // so the check does not change after the first write.
+    if (idx == 0 && mcu.cp == 0x00 && mcu.pc == 0x3723)
+        v = 0x53;
+
+    ret = v;
     break;
+  }
   case 10:
   case 11:
     ret = sram[address & 0x7fff];
