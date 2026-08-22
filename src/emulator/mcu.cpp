@@ -62,14 +62,18 @@ uint16_t MCU::MCU_AnalogReadPin(const uint32_t pin) {
 
 void MCU::MCU_AnalogSample(const int channel) {
   int value = MCU_AnalogReadPin(channel);
-  Tracer::LogAnalog(mcu.cycles, (uint8_t)channel, (uint16_t)value);
+  
   int dest = (channel << 1) & 6;
   dev_register[DEV_ADDRAH + dest] = value >> 2;
   dev_register[DEV_ADDRAL + dest] = (value << 6) & 0xc0;
+  Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+                "AnalogSample channel=%x dest=%x dev_register[DEV_ADDRAH + dest]=%x dev_register[DEV_ADDRAL + dest]=%x",
+                channel, dest, dev_register[DEV_ADDRAH + dest], dev_register[DEV_ADDRAL + dest]);
 }
 
 void MCU::MCU_DeviceWrite(uint32_t address, const uint8_t data) {
-  Tracer::LogDevWrite(mcu.cycles, (uint8_t)(address & 0x7F), data);
+  Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "DeviceWrite a=%04x, d=%02x", address, data);
   address &= 0x7f;
   if (address >= 0x10 && address < 0x40) {
     TIMER_Write(address, data);
@@ -210,8 +214,11 @@ void MCU::MCU_DeviceWrite(uint32_t address, const uint8_t data) {
 
 uint8_t MCU::MCU_DeviceRead(uint32_t address) {
 
+  
+
   auto trace_return = [&](uint8_t val) -> uint8_t {
-        Tracer::LogDevRead(mcu.cycles, (uint8_t)(address & 0x7F), val);
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc - 1),
+        "DeviceRead a=%04x, d=%02x", address & 0x7f, val);
         return val;
     };
 
@@ -291,6 +298,8 @@ uint8_t MCU::MCU_DeviceRead(uint32_t address) {
 }
 
 void MCU::MCU_DeviceReset() {
+  Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "Device Reset");
   dev_register[DEV_RAME] = 0x80;
   dev_register[DEV_SSR] = 0x80;
 }
@@ -322,6 +331,7 @@ void MCU::MCU_UpdateAnalog(const uint64_t cycles) {
 }
 
 uint8_t MCU::MCU_Read(uint32_t address) {
+
   uint32_t address_rom = address & 0x3ffff;
   uint8_t page = (address >> 16) & 0xf;
   address &= 0xffff;
@@ -348,42 +358,59 @@ uint8_t MCU::MCU_Read(uint32_t address) {
       else
           LOGWARN("Unknown read %x%04x\n", page, address);
     }
+    Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=0 a=%04x, d=%02x", address, ret);
     break;
   case 1:
     ret = rom2[address_rom & rom2_mask];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=1 a=%04x, d=%02x", address, ret);
     break;
   case 2:
     ret = rom2[address_rom & rom2_mask];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=2 a=%04x, d=%02x", address, ret);
     break;
   case 3:
     ret = rom2[address_rom & rom2_mask];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=3 a=%04x, d=%02x", address, ret);
     break;
   case 4:
     ret = rom2[address_rom & rom2_mask];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=4 a=%04x, d=%02x", address, ret);
     break;
   case 14:
   case 15:
     ret = cardram[address & 0x7fff];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=15 a=%04x, d=%02x", address, ret);
     break;
   case 10:
   case 11:
     ret = sram[address & 0x7fff];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=11 a=%04x, d=%02x", address, ret);
     break;
   case 12:
   case 13:
     ret = nvram[address & 0x7fff];
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU read p=13 a=%04x, d=%02x", address, ret);
     break;
     default:
         LOGWARN("Unknown read %x%04x\n", page, address);
   }
-  Tracer::LogMemRead(mcu.cycles, address, ret);
   return ret;
 }
 
 void MCU::MCU_Write(uint32_t address, const uint8_t value) {
-  Tracer::LogMemWrite(mcu.cycles, address, value);
+
   uint8_t page = (address >> 16) & 0xf;
   address &= 0xffff;
+          Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "MCU Write p=%02x a=%04x, d=%02x", page, address, value);
   if (page == 0 && address & 0x8000) {
     if (address >= 0xfb80 && address < 0xff80 &&
         (dev_register[DEV_RAME] & 0x80) != 0)
@@ -457,6 +484,8 @@ void MCU::MCU_PostUART(const uint8_t data) {
   if (!midi_ready)
     return;
   uart_buffer[uart_write_ptr] = data;
+          Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "PostUART ptr=%x, d=%02x", uart_write_ptr, data);
   uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
 }
 
@@ -471,9 +500,9 @@ void MCU::MCU_UpdateUART_RX() {
 
   if (mcu.cycles < uart_rx_delay)
     return;
-
   uart_rx_byte = uart_buffer[uart_read_ptr];
-  Tracer::LogUARTRX(mcu.cycles, uart_rx_byte);
+    Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "UpdUARTrx ptr=%x, d=%02x", uart_read_ptr, uart_rx_byte);
   uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
   dev_register[DEV_SSR] |= 0x40;
   MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX,
@@ -525,6 +554,8 @@ void unscramble(const uint8_t *src, uint8_t *dst, const int len) {
 
 void MCU::MCU_GA_SetGAInt(const int line, const int value) {
   // guesswork
+Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "SetGaInt line=%x, d=%x", line, value);
   if (value && !ga_int[line] && (ga_int_enable & (1 << line)) != 0)
     ga_int_trigger = line;
   ga_int[line] = value;
@@ -542,6 +573,8 @@ void MCU::MCU_Interrupt_Handle() {
   for (i = 0; i <= 8; i++) {
     if (mcu.trapa_pending[i]) {
       mcu.trapa_pending[i] = 0;
+      Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "IntHandl vec=%x", VECTOR_TRAPA_0 + i);
       MCU_Interrupt_StartVector(VECTOR_TRAPA_0 + i, -1);
       return;
     }
@@ -630,6 +663,8 @@ void MCU::MCU_Interrupt_Handle() {
     }
 
     if ((int32_t)mask < level) {
+      Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "IntStartVec vec=%x, lev=%x", vector, level);
       MCU_Interrupt_StartVector(vector, level);
       return;
     }
@@ -664,6 +699,8 @@ void MCU::TIMER_Reset() {
 }
 
 void MCU::TIMER_Write(const uint32_t address, const uint8_t data) {
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrWr a=%x, d=%02x", address, data);
   switch (address) {
   case DEV_FRT1_TCR:
     timer0_ociea = data == 0b00100000;
@@ -718,20 +755,29 @@ uint8_t MCU::TIMER_Read(const uint32_t address) {
   case DEV_FRT1_TCSR:
     ret = 0b01110001;
     timer0_ocfa_read |= timer0_ocfa;
+          Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrRead a=%x, d=%x", address, ret);
     return ret;
   case DEV_FRT2_TCSR:
     ret = 0b01110001;
     timer1_ocfa_read |= timer1_ocfa;
+          Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrRead a=%x, d=%x", address, ret);
     return ret;
   case DEV_FRT3_TCSR:
     ret = 0b01110001;
     timer2_ocfa_read |= timer2_ocfa;
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrRead a=%x, d=%x", address, ret);
     return ret;
   }
   return 0xff;
 }
 
 void MCU::TIMER2_Write(const uint32_t address, const uint8_t data) {
+       Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrWr a=%x, d=%x", address, data);
+
   switch (address) {
   case DEV_TMR_TCR:
     timer8_enabled = data & 1;
@@ -756,6 +802,8 @@ uint8_t MCU::TIMER_Read2(const uint32_t address) {
   if (address == DEV_TMR_TCSR) {
     uint8_t ret = timer8_cmfa ? 0b11100000 : 0b10100000;
     timer8_cmfa_read |= timer8_cmfa;
+    Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrWr a=%x, d=%x", address, ret);
     return ret;
   }
   return 0xff;
@@ -776,7 +824,8 @@ void MCU::TIMER_Clock(const uint64_t cycles) {
       timer0_frc += 6;
 
     if (matcha) {
-      Tracer::LogTimer(cycles, 0, timer0_ocra);
+     // Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+     //   "TmrClock 0ocra=%x", timer0_ocra );
       timer0_ocfa |= 0x20;
     }
     if (timer0_ociea && matcha)
@@ -790,7 +839,8 @@ void MCU::TIMER_Clock(const uint64_t cycles) {
       timer1_frc += 6;
 
     if (matcha) {
-      Tracer::LogTimer(cycles, 1, timer1_ocra);
+            Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "TmrClock 1ocra=%x", timer1_ocra );
       timer1_ocfa |= 0x20;
     }
     if (timer1_ociea && matcha)
@@ -803,8 +853,10 @@ void MCU::TIMER_Clock(const uint64_t cycles) {
     else
       timer2_frc += 6;
 
-    if (matcha) {
-      Tracer::LogTimer(cycles, 2, timer2_ocra);
+    if (matcha) {      
+     // Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+     //   "TmrClock 2ocra=%x", timer2_ocra );
+     // Tracer::LogTimer(cycles, 2, timer2_ocra);
       timer2_ocfa |= 0x20;
     }
     if (timer2_ociea && matcha)

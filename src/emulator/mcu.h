@@ -455,6 +455,8 @@ inline void MCU_PostSample(int *sample32) {
 
   inline void MCU_ControlRegisterWrite(const uint32_t reg, const uint32_t siz,
                                        const uint32_t data) {
+        Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "RegWr reg=%x, siz=%x, d=%x", reg, siz, data);
     if (siz) {
       if (reg == 0) {
         mcu.sr = data;
@@ -530,6 +532,8 @@ inline void MCU_PostSample(int *sample32) {
       }
       ret &= 0xff;
     }
+    Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "RegRd reg=%x, siz=%x, d=%x", reg, siz, ret );
     return ret;
   }
 
@@ -582,8 +586,6 @@ inline void MCU_PostSample(int *sample32) {
 
   inline void MCU_ReadInstruction() {
     uint8_t operand = MCU_ReadCodeAdvance();
-
-    Tracer::LogInstr(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc - 1), operand);
     
     MCU_Operand_Table[operand](this, operand);
 
@@ -608,6 +610,8 @@ inline void MCU_PostSample(int *sample32) {
   inline void MCU_Interrupt_StartVector(const uint32_t vector,
                                         const int32_t mask) {
     uint32_t address = MCU_GetVectorAddress(vector);
+      Tracer::LogCPU(mcu.cycles, mcu.cp, (uint16_t)(mcu.pc),
+        "IntStVec vec=%x, mask=%x", vector, (uint8_t)(mask >= 0 ? mask : 0) );
     Tracer::LogIRQ(mcu.cycles, address, (uint8_t)(mask >= 0 ? mask : 0));
     MCU_PushStack(mcu.pc);
     MCU_PushStack(mcu.cp);

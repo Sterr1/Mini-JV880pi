@@ -256,18 +256,19 @@ bool CMiniJV880::Initialize(void) {
 	{
 		return false;
 	}
-  
+
 
   InitNetwork();  // returns bool but we continue even if something goes wrong
   CTimer::SimpleMsDelay(2000);
-  TracerStop();
+
+    TracerStop();
             int n = TracerSave("jv_trace_init.bin");
             if (n >= 0) {
                 m_UI.LCDMessage("Tracer: saved %d records", n);
             } else {
                 LOGERR("Tracer: save failed");
             }
-  
+
   LOGNOTE("CMiniJV880::Initialize: InitNetwork() called");
 
   LOGNOTE("initialised");
@@ -622,6 +623,7 @@ void CMiniJV880::Run(unsigned nCore) {
 
                     if (!mcu.mcu.sleep)
                         mcu.MCU_ReadInstruction();
+
                     mcu.mcu.cycles += n_mMCUcycles;
                     __atomic_store_n(&mcu.mcu.cycles, mcu.mcu.cycles, __ATOMIC_RELEASE);
                     mcu.TIMER_Clock(mcu.mcu.cycles);
